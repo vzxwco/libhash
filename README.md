@@ -1,2 +1,2 @@
 # libhash
-Hash library
+Hash library (currently far from perfect)
