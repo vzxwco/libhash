@@ -40,14 +40,20 @@ typedef struct {
 	size_t load;
 } hash;
 
+// hash handling functions
+
 hash  *hash_create(size_t (*func)(void *, size_t), size_t);
 int    hash_insert(hash *, void *, size_t, void *);
 void  *hash_lookup(hash *, void *, size_t);
 int    hash_rehash(hash *, size_t);
-void   hash_delete(hash *);
+int    hash_delete(hash *, void *, size_t);
+void   hash_destroy(hash *);
 size_t hash_size(hash *h);
 size_t hash_load(hash *h);
 double hash_loadfactor(hash *);
 void   hash_print(hash *);
+
+// hash function collection
+size_t hash_djb(void *, size_t);
 
 #endif  /* ! HUBD_H */

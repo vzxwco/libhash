@@ -27,23 +27,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 #include "libhash.h"
 
 
+static int hash_insert_entry(entry *e, size_t size, size_t pos, void *key, size_t len, void *val);
 
-size_t hash_djb(void *key, size_t len)
-{
-	size_t i, hash = 5381;
-	int c;
-	
-	for (i = 0; i < len; i++) {
-		c = ((char *)key)[i];
-		hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-	}
-	
-	return hash;
-}
 
 int main()
 {
@@ -111,7 +99,7 @@ int main()
 	printf("load: %f\n", hash_loadfactor(h));
 	
 	
-	hash_delete(h);
+	hash_destroy(h);
 	
 	// your kung-fu is old and now you must die!!
 	return EXIT_SUCCESS;
@@ -259,11 +247,28 @@ void hash_print(hash *h)
 	}
 }
 
-void hash_delete(hash *h)
+void hash_destroy(hash *h)
 {
 	free(h->entry);
 	free(h);
 }
 
 
+
+/*
+ *  Hash function collection starts here
+ */
+
+size_t hash_djb(void *key, size_t len)
+{
+	size_t i, hash = 5381;
+	int c;
+	
+	for (i = 0; i < len; i++) {
+		c = ((char *)key)[i];
+		hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+	}
+	
+	return hash;
+}
 
