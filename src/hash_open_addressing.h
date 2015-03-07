@@ -24,57 +24,15 @@
  */
 
 
-#ifndef HASH_H
-#define HASH_H
+#ifndef HASH_OA_H
+#define HASH_OA_H
 
+hash  *hash_oa_create(hash *, size_t (*func)(void *, size_t), size_t);
+int    hash_oa_insert(hash *, void *, size_t, void *);
+void  *hash_oa_lookup(hash *, void *, size_t);
+int    hash_oa_rehash(hash *, size_t);
+int    hash_oa_delete(hash *, void *, size_t);
+void   hash_oa_print(hash *);
+void   hash_oa_destroy(hash *);
 
-// collision resolution types
-#define SEPARATE_CHAINING 1
-#define OPEN_ADDRESSING   2
-
-
-// common data structures
-typedef struct {
-	void *key;
-	size_t len;
-	void *val;
-} entry;
-
-
-typedef struct hash_struct hash;
-struct hash_struct {
-	int type;
-	size_t (*func)(void *, size_t);
-	entry *entry;
-	size_t size;
-	size_t load;
-
-	hash  *(*create)(hash *, size_t (*func)(void *, size_t), size_t);
-	int    (*insert)(hash *, void *, size_t, void *);
-	void  *(*lookup)(hash *, void *, size_t);
-	int    (*rehash)(hash *, size_t);
-	int    (*delete)(hash *, void *, size_t);
-	void   (*print)(hash *);
-	void   (*destroy)(hash *);
-};
-
-
-// virtual hash handling functions
-hash  *hash_create(int, size_t (*func)(void *, size_t), size_t);
-int    hash_insert(hash *, void *, size_t, void *);
-void  *hash_lookup(hash *, void *, size_t);
-int    hash_rehash(hash *, size_t);
-int    hash_delete(hash *, void *, size_t);
-void   hash_print(hash *);
-void   hash_destroy(hash *);
-
-// common hash handling functions
-size_t hash_size(hash *h);
-size_t hash_load(hash *h);
-double hash_loadfactor(hash *);
-
-
-// hash function collection
-size_t hash_djb(void *, size_t);
-
-#endif  /* ! HASH_H */
+#endif  /* ! HASH_OA_H */

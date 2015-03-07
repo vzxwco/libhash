@@ -27,55 +27,55 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "libhash.h"
-
-
-static int hash_insert_entry(entry *e, size_t size, size_t pos, void *key, size_t len, void *val);
+#include "hash.h"
+#include "hash_open_addressing.h"
 
 
 int main()
 {
 	hash *h;
 	
-	h = hash_create(hash_djb, 10);
+	h = hash_create(OPEN_ADDRESSING, hash_djb, 10);
+	if (h == NULL)
+		printf("creating hash failed\n");
 	
-	puts("adding 1\n");
+	puts("adding 1");
 	if (hash_insert(h, "foo", 3, "bar"))
 		printf("1 failed\n");
 	
-	puts("adding 2\n");
+	puts("adding 2");
 	if (hash_insert(h, "111klsdjfslk", 3, "123"))
 		printf("2 failed\n");
 
-	puts("adding 3\n");
+	puts("adding 3");
 	if (hash_insert(h, "sldkfj lksdj", 3, "456789"))
 		printf("3 failed\n");
 
-	puts("adding 4\n");
+	puts("adding 4");
 	if (hash_insert(h, "sdkjf lsdkfjslkdjf slkdjf lskdjflskdjf", 3, "bsdsdfsdfsdfsdfar"))
 		printf("4 failed\n");
 
-	puts("adding 5\n");
+	puts("adding 5");
 	if (hash_insert(h, "s", 3, "y"))
 		printf("5 failed\n");
 
-	puts("adding 6\n");
+	puts("adding 6");
 	if (hash_insert(h, "yxcv", 3, "yxcv"))
 		printf("6 failed\n");
 	
-	puts("adding 7\n");
+	puts("adding 7");
 	if (hash_insert(h, "1yxcv", 3, "yxcv"))
 		printf("6 failed\n");
 	
-	puts("adding 8\n");
+	puts("adding 8");
 	if (hash_insert(h, "2yxcv", 3, "yxcv"))
 		printf("6 failed\n");
 	
-	puts("adding 9\n");
+	puts("adding 9");
 	if (hash_insert(h, "3yxcv", 3, "yxcv"))
 		printf("6 failed\n");
 	
-	puts("adding 10\n");
+	puts("adding 10");
 	if (hash_insert(h, "4yxcv", 3, "yxcv"))
 		printf("6 failed\n");
 	
@@ -105,19 +105,30 @@ int main()
 	return EXIT_SUCCESS;
 }
 
-hash *hash_create(size_t (*func)(void *, size_t), size_t size)
+hash *hash_create(int type, size_t (*func)(void *, size_t), size_t size)
 {
 	// malloc hash
 	hash *h = malloc(sizeof *h);
 	if (h == NULL)
 		return NULL;
 	
-	// malloc buckets
-	h->entry = calloc(size, sizeof *(h->entry));
-	if (h->entry == NULL) {
-		free(h);
-		return NULL;
+	switch (type) {
+		case OPEN_ADDRESSING:
+			h->create  = hash_oa_create;
+			h->insert  = hash_oa_insert;
+			h->lookup  = hash_oa_lookup;
+			h->rehash  = hash_oa_rehash;
+			h->print   = hash_oa_print;
+			h->destroy = hash_oa_destroy;
+			break;
+		case SEPARATE_CHAINING:
+			break;
+		default:
+			free(h);
+			return NULL;
 	}
+
+	h->create(h, func, size);
 	
 	// initialize hash
 	h->func = func;
@@ -127,58 +138,14 @@ hash *hash_create(size_t (*func)(void *, size_t), size_t size)
 	return h;
 }
 
-static int hash_insert_entry(entry *e, size_t size, size_t pos, void *key, size_t len, void *val)
-{
-	size_t i;
-	
-	// find first free entry starting from pos
-	for (i = pos; i < pos + size; i++) {
-		if (e[i % size].len == 0) {
-			e[i % size].key = key;
-			e[i % size].len = len;
-			e[i % size].val = val;
-			
-			return 0;
-		}
-		
-		// key already inserted?
-		if (e[i % size].len == len)
-			if (!memcmp(e[i % size].key, key, len))
-				return -1;
-	}
-	
-	return -1;
-}
-
 int hash_insert(hash *h, void *key, size_t len, void *val)
 {
-	size_t pos;
-	
-	// compute slot number
-	pos = h->func(key, len) % h->size;
-	
-	if (!hash_insert_entry(h->entry, h->size, pos, key, len, val)) {
-		h->load++;
-		return 0;
-	} else {
-		return -1;
-	}
+	return h->insert(h, key, len, val);
 }
 
 void *hash_lookup(hash *h, void *key, size_t len)
 {
-	size_t i, pos;
-	
-	// compute slot number
-	pos = h->func(key, len) % h->size;
-	
-	// find first matching entry starting from pos
-	for (i = pos; i < pos + h->size; i++)
-		if (h->entry[i % h->size].len == len)
-			if (!memcmp(h->entry[i % h->size].key, key, len))
-				return h->entry[i % h->size].val;
-	
-	return NULL;
+	return h->lookup(h, key, len);
 }
 
 double hash_loadfactor(hash *h)
@@ -197,60 +164,17 @@ size_t hash_size(hash *h)
 }
 
 int hash_rehash(hash *h, size_t size) {
-	entry *entry;
-	size_t i, pos, len;
-	void *key, *val;
-	
-	// nothing to rehash
-	if (size == h->size)
-		return 0;
-	
-	entry = calloc(size, sizeof *entry);
-	if (entry == NULL)
-		return -1;
-
-	for (i = 0; i < h->size; i++) {
-		if (h->entry[i].len) {
-			key = h->entry[i].key;
-			len = h->entry[i].len;
-			val = h->entry[i].val;
-			
-			pos = h->func(key, len) % size;
-			if (hash_insert_entry(entry, size, pos, key, len, val)) {
-				free(entry);
-				return -1;
-			}
-			    
-		}
-	}
-	
-	free(h->entry);
-	h->entry = entry;
-	h->size = size;
-	
-	return 0;
+	return h->rehash(h, size);
 }
 
 void hash_print(hash *h)
 {
-	size_t i;
-	
-	for (i = 0; i < h->size; i++) {
-		printf("%lu", i);
-		
-		if (h->entry[i].len) {
-			printf(" <- %lu: (%s) -> (%s)", h->func(h->entry[i].key, h->entry[i].len) % h->size, h->entry[i].key, h->entry[i].val);
-
-		}
-		
-		printf("\n");
-	}
+	return h->print(h);
 }
 
 void hash_destroy(hash *h)
 {
-	free(h->entry);
-	free(h);
+	return h->destroy(h);
 }
 
 
