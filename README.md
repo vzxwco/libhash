@@ -1,0 +1,2 @@
+# libhash
+Hash library
