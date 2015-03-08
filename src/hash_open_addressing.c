@@ -36,8 +36,8 @@ static int hash_oa_insert_entry(entry *e, size_t size, size_t pos, void *key, si
 hash *hash_oa_create(hash *h, size_t (*func)(void *, size_t), size_t size)
 {
 	// malloc buckets
-	h->entry = calloc(size, sizeof *(h->entry));
-	if (h->entry == NULL) {
+	h->slots = calloc(size, sizeof (entry));
+	if (h->slots == NULL) {
 		free(h);
 		return NULL;
 	}
@@ -80,7 +80,7 @@ int hash_oa_insert(hash *h, void *key, size_t len, void *val)
 	// compute slot number
 	pos = h->func(key, len) % h->size;
 	
-	if (!hash_oa_insert_entry(h->entry, h->size, pos, key, len, val)) {
+	if (!hash_oa_insert_entry(h->slots, h->size, pos, key, len, val)) {
 		h->load++;
 		return 0;
 	} else {
@@ -91,49 +91,51 @@ int hash_oa_insert(hash *h, void *key, size_t len, void *val)
 void *hash_oa_lookup(hash *h, void *key, size_t len)
 {
 	size_t i, pos;
+	entry *slots = (entry *)h->slots;
 	
 	// compute slot number
 	pos = h->func(key, len) % h->size;
 	
 	// find first matching entry starting from pos
 	for (i = pos; i < pos + h->size; i++)
-		if (h->entry[i % h->size].len == len)
-			if (!memcmp(h->entry[i % h->size].key, key, len))
-				return h->entry[i % h->size].val;
+		if (slots[i % h->size].len == len)
+			if (!memcmp(slots[i % h->size].key, key, len))
+				return slots[i % h->size].val;
 	
 	return NULL;
 }
 
 int hash_oa_rehash(hash *h, size_t size) {
-	entry *entry;
 	size_t i, pos, len;
 	void *key, *val;
+	entry *slots = (entry *)h->slots;
+	entry *new_slots;
 	
 	// nothing to rehash
 	if (size == h->size)
 		return 0;
 	
-	entry = calloc(size, sizeof *entry);
-	if (entry == NULL)
+	new_slots = calloc(size, sizeof *new_slots);
+	if (new_slots == NULL)
 		return -1;
 
 	for (i = 0; i < h->size; i++) {
-		if (h->entry[i].len) {
-			key = h->entry[i].key;
-			len = h->entry[i].len;
-			val = h->entry[i].val;
+		if (slots[i].len) {
+			key = slots[i].key;
+			len = slots[i].len;
+			val = slots[i].val;
 			
 			pos = h->func(key, len) % size;
-			if (hash_oa_insert_entry(entry, size, pos, key, len, val)) {
-				free(entry);
+			if (hash_oa_insert_entry(new_slots, size, pos, key, len, val)) {
+				free(new_slots);
 				return -1;
 			}
 			    
 		}
 	}
 	
-	free(h->entry);
-	h->entry = entry;
+	free(h->slots);
+	h->slots = new_slots;
 	h->size = size;
 	
 	return 0;
@@ -142,12 +144,13 @@ int hash_oa_rehash(hash *h, size_t size) {
 void hash_oa_print(hash *h)
 {
 	size_t i;
-	
+	entry *slots = (entry *)h->slots;
+
 	for (i = 0; i < h->size; i++) {
 		printf("%lu", i);
 		
-		if (h->entry[i].len) {
-			printf(" <- %lu: (%s) -> (%s)", h->func(h->entry[i].key, h->entry[i].len) % h->size, h->entry[i].key, h->entry[i].val);
+		if (slots[i].len) {
+			printf(" <- %lu: (%s) -> (%s)", h->func(slots[i].key, slots[i].len) % h->size, slots[i].key, slots[i].val);
 
 		}
 		
@@ -157,7 +160,7 @@ void hash_oa_print(hash *h)
 
 void hash_oa_destroy(hash *h)
 {
-	free(h->entry);
+	free(h->slots);
 	free(h);
 }
 

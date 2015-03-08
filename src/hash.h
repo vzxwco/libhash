@@ -45,7 +45,7 @@ typedef struct hash_struct hash;
 struct hash_struct {
 	int type;
 	size_t (*func)(void *, size_t);
-	entry *entry;
+	void *slots;
 	size_t size;
 	size_t load;
 
@@ -68,6 +68,7 @@ int    hash_delete(hash *, void *, size_t);
 void   hash_print(hash *);
 void   hash_destroy(hash *);
 
+
 // common hash handling functions
 size_t hash_size(hash *h);
 size_t hash_load(hash *h);
@@ -76,5 +77,6 @@ double hash_loadfactor(hash *);
 
 // hash function collection
 size_t hash_djb(void *, size_t);
+
 
 #endif  /* ! HASH_H */

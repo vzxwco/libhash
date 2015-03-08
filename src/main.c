@@ -28,97 +28,78 @@
 #include <stdlib.h>
 #include <string.h>
 #include "hash.h"
-#include "hash_open_addressing.h"
 
 
-hash *hash_create(int type, size_t (*func)(void *, size_t), size_t size)
+int main()
 {
-	// malloc hash
-	hash *h = malloc(sizeof *h);
+	hash *h;
+	
+	h = hash_create(OPEN_ADDRESSING, hash_djb, 10);
 	if (h == NULL)
-		return NULL;
+		printf("creating hash failed\n");
 	
-	switch (type) {
-		case OPEN_ADDRESSING:
-			h->create  = hash_oa_create;
-			h->insert  = hash_oa_insert;
-			h->lookup  = hash_oa_lookup;
-			h->rehash  = hash_oa_rehash;
-			h->print   = hash_oa_print;
-			h->destroy = hash_oa_destroy;
-			break;
-		case SEPARATE_CHAINING:
-			break;
-		default:
-			free(h);
-			return NULL;
-	}
-
-	h->create(h, func, size);
+	puts("adding 1");
+	if (hash_insert(h, "foo", 3, "bar"))
+		printf("1 failed\n");
 	
-	// initialize hash
-	h->func = func;
-	h->size = size;
-	h->load = 0;
+	puts("adding 2");
+	if (hash_insert(h, "111klsdjfslk", 3, "123"))
+		printf("2 failed\n");
+
+	puts("adding 3");
+	if (hash_insert(h, "sldkfj lksdj", 3, "456789"))
+		printf("3 failed\n");
+
+	puts("adding 4");
+	if (hash_insert(h, "sdkjf lsdkfjslkdjf slkdjf lskdjflskdjf", 3, "bsdsdfsdfsdfsdfar"))
+		printf("4 failed\n");
+
+	puts("adding 5");
+	if (hash_insert(h, "s", 3, "y"))
+		printf("5 failed\n");
+
+	puts("adding 6");
+	if (hash_insert(h, "yxcv", 3, "yxcv"))
+		printf("6 failed\n");
 	
-	return h;
-}
-
-int hash_insert(hash *h, void *key, size_t len, void *val)
-{
-	return h->insert(h, key, len, val);
-}
-
-void *hash_lookup(hash *h, void *key, size_t len)
-{
-	return h->lookup(h, key, len);
-}
-
-double hash_loadfactor(hash *h)
-{
-	return (double) h->load / h->size;
-}
-
-size_t hash_load(hash *h)
-{
-	return h->load;
-}
-
-size_t hash_size(hash *h)
-{
-	return h->size;
-}
-
-int hash_rehash(hash *h, size_t size) {
-	return h->rehash(h, size);
-}
-
-void hash_print(hash *h)
-{
-	return h->print(h);
-}
-
-void hash_destroy(hash *h)
-{
-	return h->destroy(h);
-}
-
-
-
-/*
- *  Hash function collection starts here
- */
-
-size_t hash_djb(void *key, size_t len)
-{
-	size_t i, hash = 5381;
-	int c;
+	puts("adding 7");
+	if (hash_insert(h, "1yxcv", 3, "yxcv"))
+		printf("6 failed\n");
 	
-	for (i = 0; i < len; i++) {
-		c = ((char *)key)[i];
-		hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+	puts("adding 8");
+	if (hash_insert(h, "2yxcv", 3, "yxcv"))
+		printf("6 failed\n");
+	
+	puts("adding 9");
+	if (hash_insert(h, "3yxcv", 3, "yxcv"))
+		printf("6 failed\n");
+	
+	puts("adding 10");
+	if (hash_insert(h, "4yxcv", 3, "yxcv"))
+		printf("6 failed\n");
+	
+	printf("added 10 items\n");
+	
+	hash_print(h);
+	
+	printf("%s\n", (char *)hash_lookup(h, "foo", 3));
+	
+	printf("load: %f\n", hash_loadfactor(h));
+	
+	puts("rehashing...\n");
+	
+	if (hash_rehash(h, 25)) {
+		printf("error rehashing!\n");
 	}
 	
-	return hash;
+	hash_print(h);
+	printf("%s\n", (char *)hash_lookup(h, "foo", 3));
+	
+	printf("load: %f\n", hash_loadfactor(h));
+	
+	
+	hash_destroy(h);
+	
+	// your kung-fu is old and now you must die!!
+	return EXIT_SUCCESS;
 }
-
